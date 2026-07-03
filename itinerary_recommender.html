@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trip Tailor — Smart Itinerary Recommender</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#FF6FA5;
+    --pink-soft:#FFD6E8;
+    --pink-pale:#FFF0F6;
+    --yellow:#FFD23F;
+    --yellow-soft:#FFF3D0;
+    --white:#FFFFFF;
+    --ink:#3A2E39;
+    --ink-soft:#8A7A87;
+    --shadow: 0 10px 30px rgba(255,111,165,0.16);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 10% 5%, var(--yellow-soft) 0%, transparent 40%),
+      radial-gradient(circle at 90% 95%, var(--pink-soft) 0%, transparent 45%),
+      var(--white);
+    font-family:'Quicksand', sans-serif;
+    color:var(--ink);
+    padding:28px 16px;
+  }
+
+  .app{
+    max-width:640px;
+    margin:0 auto;
+    background:var(--white);
+    border-radius:28px;
+    box-shadow:var(--shadow);
+    border:3px solid var(--pink-soft);
+    overflow:hidden;
+  }
+
+  .header{
+    background:linear-gradient(135deg, var(--pink) 0%, #FF8FBB 55%, var(--yellow) 130%);
+    padding:26px 24px;
+    position:relative;
+    overflow:hidden;
+  }
+  .header::after{
+    content:"";
+    position:absolute; right:-40px; top:-40px;
+    width:150px; height:150px;
+    background:rgba(255,255,255,0.16);
+    border-radius:50%;
+  }
+  .header h1{
+    font-family:'Fredoka', sans-serif;
+    color:var(--white);
+    margin:0 0 4px;
+    font-size:24px;
+  }
+  .header p{
+    margin:0;
+    color:rgba(255,255,255,0.95);
+    font-size:13px;
+    z-index:1; position:relative;
+  }
+
+  .body{ padding:22px 24px 26px; }
+
+  .section{ margin-bottom:22px; }
+  .section-label{
+    font-family:'Fredoka', sans-serif;
+    font-size:14px;
+    color:var(--ink);
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .section-label .num{
+    background:var(--pink);
+    color:var(--white);
+    width:20px; height:20px;
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-size:11px;
+    font-weight:700;
+  }
+
+  /* City select */
+  .city-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));
+    gap:8px;
+  }
+  .city-card{
+    border:2px solid var(--pink-soft);
+    background:var(--pink-pale);
+    border-radius:14px;
+    padding:10px 8px;
+    text-align:center;
+    cursor:pointer;
+    transition:all 0.15s ease;
+  }
+  .city-card .emoji{ font-size:22px; display:block; margin-bottom:4px; }
+  .city-card .name{ font-size:12.5px; font-weight:700; color:var(--ink); }
+  .city-card:hover{ transform:translateY(-2px); }
+  .city-card.selected{
+    background:linear-gradient(135deg, var(--pink), #FF8FBB);
+    border-color:var(--pink);
+  }
+  .city-card.selected .name{ color:var(--white); }
+
+  /* Time slider */
+  .time-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    background:var(--pink-pale);
+    border-radius:14px;
+    padding:14px 16px;
+  }
+  .time-row input[type=range]{
+    flex:1;
+    accent-color:var(--pink);
+    height:6px;
+  }
+  .time-value{
+    font-family:'Fredoka', sans-serif;
+    font-size:16px;
+    color:var(--pink);
+    min-width:64px;
+    text-align:right;
+  }
+
+  /* Interest chips */
+  .chip-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .chip{
+    border:2px solid var(--pink-soft);
+    background:var(--pink-pale);
+    color:var(--ink);
+    font-family:'Quicksand', sans-serif;
+    font-weight:600;
+    font-size:12.5px;
+    padding:8px 14px;
+    border-radius:20px;
+    cursor:pointer;
+    transition:all 0.15s ease;
+    display:flex;
+    align-items:center;
+    gap:5px;
+  }
+  .chip:hover{ transform:translateY(-1px); }
+  .chip.selected{
+    background:linear-gradient(135deg, var(--yellow), #FFDB70);
+    border-color:var(--yellow);
+    color:#7A5B00;
+    font-weight:700;
+  }
+
+  .generate-btn{
+    width:100%;
+    border:none;
+    background:linear-gradient(135deg, var(--pink), var(--yellow));
+    color:var(--white);
+    font-family:'Fredoka', sans-serif;
+    font-size:16px;
+    padding:14px 0;
+    border-radius:16px;
+    cursor:pointer;
+    transition:transform 0.15s ease;
+    box-shadow:0 6px 16px rgba(255,111,165,0.3);
+  }
+  .generate-btn:hover{ transform:translateY(-2px); }
+  .generate-btn:active{ transform:translateY(0); }
+  .generate-btn:disabled{
+    opacity:0.5;
+    cursor:not-allowed;
+    transform:none;
+  }
+
+  /* Results */
+  .results{
+    margin-top:24px;
+    display:none;
+  }
+  .results.show{ display:block; animation:fadeIn 0.3s ease; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+
+  .results-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:14px;
+    padding-bottom:10px;
+    border-bottom:2px dashed var(--pink-soft);
+  }
+  .results-header h2{
+    font-family:'Fredoka', sans-serif;
+    font-size:16px;
+    margin:0;
+  }
+  .results-header span{
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+
+  .timeline{
+    position:relative;
+    padding-left:26px;
+  }
+  .timeline::before{
+    content:"";
+    position:absolute;
+    left:8px; top:6px; bottom:6px;
+    width:2px;
+    background:var(--pink-soft);
+  }
+  .stop{
+    position:relative;
+    margin-bottom:16px;
+    background:var(--pink-pale);
+    border:2px solid var(--pink-soft);
+    border-radius:16px;
+    padding:12px 14px;
+  }
+  .stop::before{
+    content:"";
+    position:absolute;
+    left:-26px; top:16px;
+    width:12px; height:12px;
+    border-radius:50%;
+    background:var(--pink);
+    border:2px solid var(--white);
+    box-shadow:0 0 0 2px var(--pink-soft);
+  }
+  .stop-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:8px;
+  }
+  .stop-name{
+    font-family:'Fredoka', sans-serif;
+    font-size:14.5px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .stop-time{
+    font-size:11.5px;
+    font-weight:700;
+    color:var(--pink);
+    background:var(--white);
+    padding:3px 8px;
+    border-radius:10px;
+    white-space:nowrap;
+  }
+  .stop-desc{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin:6px 0 8px;
+    line-height:1.4;
+  }
+  .stop-meta{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .tag-pill{
+    font-size:10.5px;
+    background:var(--white);
+    border:1px solid var(--pink-soft);
+    padding:2px 8px;
+    border-radius:10px;
+    color:var(--ink-soft);
+  }
+  .tag-pill.match{
+    background:var(--yellow-soft);
+    border-color:var(--yellow);
+    color:#7A5B00;
+    font-weight:700;
+  }
+  .match-score{
+    margin-left:auto;
+    font-size:10.5px;
+    color:var(--ink-soft);
+  }
+
+  .summary-box{
+    margin-top:16px;
+    background:var(--yellow-soft);
+    border:2px solid var(--yellow);
+    border-radius:14px;
+    padding:12px 14px;
+    font-size:12.5px;
+    display:flex;
+    justify-content:space-around;
+    text-align:center;
+  }
+  .summary-box .item .val{
+    font-family:'Fredoka', sans-serif;
+    font-size:17px;
+    display:block;
+  }
+  .summary-box .item .lbl{ color:var(--ink-soft); font-size:10.5px; }
+
+  .empty-note{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:12.5px;
+    padding:10px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .results, .stop{ animation:none !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <h1>🧭 Trip Tailor</h1>
+    <p>Content-based filtering + time-budget optimization to build your day</p>
+  </div>
+
+  <div class="body">
+
+    <div class="section">
+      <div class="section-label"><span class="num">1</span> Where are you?</div>
+      <div class="city-grid" id="cityGrid"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-label"><span class="num">2</span> How much time do you have?</div>
+      <div class="time-row">
+        <input type="range" id="timeSlider" min="2" max="12" step="0.5" value="6">
+        <div class="time-value" id="timeValue">6 hrs</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label"><span class="num">3</span> What are you into?</div>
+      <div class="chip-grid" id="interestGrid"></div>
+    </div>
+
+    <button class="generate-btn" id="generateBtn" disabled>Build my itinerary</button>
+
+    <div class="results" id="results">
+      <div class="results-header">
+        <h2 id="resultsTitle">Your itinerary</h2>
+        <span id="resultsSub"></span>
+      </div>
+      <div class="timeline" id="timeline"></div>
+      <div class="summary-box" id="summaryBox"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   ITINERARY RECOMMENDATION SYSTEM
+   Technique: CONTENT-BASED FILTERING
+     - Every attraction has a tag vector (its "content" profile)
+     - The user builds a preference vector by selecting interests
+     - We score each attraction by how well its tags match the
+       user's preferences (+ a small quality/rating boost)
+   Combined with: 0/1 KNAPSACK OPTIMIZATION
+     - Time is a limited resource (the "knapsack capacity")
+     - Each attraction has a "weight" (duration) and a "value"
+       (content-based score)
+     - Dynamic programming selects the subset of attractions that
+       maximizes total relevance score without exceeding the
+       user's available time — the classic knapsack problem.
+   ============================================================ */
+
+const INTERESTS = [
+  { key: 'history',   label: 'History',      icon: '🏛️' },
+  { key: 'art',        label: 'Art & Culture',icon: '🎨' },
+  { key: 'food',       label: 'Food',         icon: '🍜' },
+  { key: 'nature',     label: 'Nature',       icon: '🌿' },
+  { key: 'adventure',  label: 'Adventure',    icon: '🧗' },
+  { key: 'shopping',   label: 'Shopping',     icon: '🛍️' },
+  { key: 'nightlife',  label: 'Nightlife',    icon: '🌃' },
+  { key: 'relaxation', label: 'Relaxation',   icon: '🧘' },
+  { key: 'family',     label: 'Family',       icon: '👨‍👩‍👧' }
+];
+
+/* Dataset: attractions per city. duration = minutes, rating 0-5,
+   tags = content vector, slot = ideal time-of-day for ordering */
+const CITY_DATA = {
+  paris: {
+    label: 'Paris', emoji: '🗼',
+    attractions: [
+      { name:'Louvre Museum', tags:['art','history'], duration:150, rating:4.8, slot:'morning', desc:'World-famous art museum with the Mona Lisa and thousands of works spanning millennia.' },
+      { name:'Eiffel Tower', tags:['history','adventure'], duration:90, rating:4.7, slot:'morning', desc:'Iconic iron tower with sweeping views over the city.' },
+      { name:'Le Marais Food Walk', tags:['food'], duration:75, rating:4.6, slot:'afternoon', desc:'Wander historic streets sampling falafel, pastries, and cheese shops.' },
+      { name:'Musée d\'Orsay', tags:['art'], duration:120, rating:4.7, slot:'afternoon', desc:'Impressionist masterpieces housed in a former railway station.' },
+      { name:'Jardin du Luxembourg', tags:['nature','relaxation'], duration:60, rating:4.5, slot:'afternoon', desc:'Elegant gardens perfect for a quiet stroll or picnic.' },
+      { name:'Champs-Élysées Shopping', tags:['shopping'], duration:90, rating:4.2, slot:'afternoon', desc:'Flagship stores lining Paris\'s grand boulevard.' },
+      { name:'Seine River Cruise', tags:['relaxation','history'], duration:60, rating:4.6, slot:'evening', desc:'Glide past illuminated landmarks on a relaxed evening cruise.' },
+      { name:'Montmartre & Sacré-Cœur', tags:['history','art'], duration:100, rating:4.7, slot:'afternoon', desc:'Cobblestone hills, street artists, and a hilltop basilica.' },
+      { name:'Le Marais Nightlife', tags:['nightlife'], duration:120, rating:4.3, slot:'evening', desc:'Trendy bars and late-night cafés in a historic quarter.' },
+      { name:'Disneyland Paris (half-day)', tags:['family','adventure'], duration:240, rating:4.4, slot:'morning', desc:'Rides and shows for the whole family, just outside the city.' }
+    ]
+  },
+  tokyo: {
+    label: 'Tokyo', emoji: '🗾',
+    attractions: [
+      { name:'Senso-ji Temple', tags:['history','art'], duration:75, rating:4.6, slot:'morning', desc:'Tokyo\'s oldest temple, with a lively market street leading up to it.' },
+      { name:'Tsukiji Outer Market', tags:['food'], duration:90, rating:4.7, slot:'morning', desc:'Fresh sushi, street snacks, and kitchenware stalls.' },
+      { name:'teamLab Planets', tags:['art','adventure'], duration:120, rating:4.8, slot:'afternoon', desc:'Immersive digital art you walk, wade, and climb through.' },
+      { name:'Shibuya Crossing & Shopping', tags:['shopping'], duration:90, rating:4.4, slot:'afternoon', desc:'The world\'s busiest pedestrian crossing surrounded by department stores.' },
+      { name:'Shinjuku Gyoen Garden', tags:['nature','relaxation'], duration:75, rating:4.6, slot:'afternoon', desc:'Sprawling park blending Japanese, French, and English garden styles.' },
+      { name:'Golden Gai Bar Hopping', tags:['nightlife'], duration:120, rating:4.5, slot:'evening', desc:'Tiny, atmospheric bars packed into narrow alleyways.' },
+      { name:'Odaiba Family Zone', tags:['family','adventure'], duration:150, rating:4.3, slot:'afternoon', desc:'Waterfront park with a giant Gundam statue and interactive museums.' },
+      { name:'Ryokan Onsen Experience', tags:['relaxation'], duration:90, rating:4.7, slot:'evening', desc:'Traditional hot spring bathing for deep relaxation.' },
+      { name:'Ghibli Museum', tags:['art','family'], duration:120, rating:4.8, slot:'morning', desc:'Whimsical museum celebrating Studio Ghibli\'s animated worlds.' }
+    ]
+  },
+  newyork: {
+    label: 'New York', emoji: '🗽',
+    attractions: [
+      { name:'Statue of Liberty & Ellis Island', tags:['history'], duration:180, rating:4.6, slot:'morning', desc:'Ferry out to the harbor for the icon of American history.' },
+      { name:'MoMA', tags:['art'], duration:120, rating:4.7, slot:'morning', desc:'Modern and contemporary art from Van Gogh to Warhol.' },
+      { name:'Chelsea Market Food Tour', tags:['food'], duration:75, rating:4.6, slot:'afternoon', desc:'Indoor market packed with artisanal food vendors.' },
+      { name:'Central Park Stroll', tags:['nature','relaxation'], duration:90, rating:4.7, slot:'afternoon', desc:'843 acres of lakes, paths, and skyline views.' },
+      { name:'Fifth Avenue Shopping', tags:['shopping'], duration:90, rating:4.3, slot:'afternoon', desc:'Flagship luxury stores along Manhattan\'s famous avenue.' },
+      { name:'Broadway Show', tags:['art','nightlife'], duration:150, rating:4.8, slot:'evening', desc:'World-class theater in the Theater District.' },
+      { name:'Top of the Rock', tags:['adventure','history'], duration:60, rating:4.6, slot:'evening', desc:'Observation deck with a postcard view of the Empire State Building.' },
+      { name:'American Museum of Natural History', tags:['family','history'], duration:150, rating:4.7, slot:'morning', desc:'Dinosaurs, planetarium shows, and dioramas kids love.' },
+      { name:'Lower East Side Bars', tags:['nightlife'], duration:120, rating:4.4, slot:'evening', desc:'Speakeasies and craft cocktail bars in a historic neighborhood.' }
+    ]
+  },
+  rome: {
+    label: 'Rome', emoji: '🏛️',
+    attractions: [
+      { name:'Colosseum & Roman Forum', tags:['history'], duration:150, rating:4.8, slot:'morning', desc:'Ancient amphitheater and the ruins of Rome\'s political heart.' },
+      { name:'Vatican Museums & Sistine Chapel', tags:['art','history'], duration:180, rating:4.8, slot:'morning', desc:'Renaissance masterpieces including Michelangelo\'s famous ceiling.' },
+      { name:'Trastevere Food Crawl', tags:['food'], duration:90, rating:4.7, slot:'evening', desc:'Cobblestone lanes filled with trattorias and gelaterias.' },
+      { name:'Villa Borghese Gardens', tags:['nature','relaxation'], duration:75, rating:4.5, slot:'afternoon', desc:'Rome\'s green retreat with a lake and shaded paths.' },
+      { name:'Via del Corso Shopping', tags:['shopping'], duration:75, rating:4.1, slot:'afternoon', desc:'Central shopping street connecting Piazza del Popolo to the city center.' },
+      { name:'Trastevere Nightlife', tags:['nightlife'], duration:120, rating:4.5, slot:'evening', desc:'Wine bars and live music in a lively riverside district.' },
+      { name:'Trevi Fountain & Pantheon Walk', tags:['history','art'], duration:60, rating:4.7, slot:'afternoon', desc:'Baroque fountain and a perfectly preserved Roman temple.' },
+      { name:'Explora Children\'s Museum', tags:['family'], duration:90, rating:4.3, slot:'afternoon', desc:'Hands-on exhibits designed for younger travelers.' }
+    ]
+  },
+  kochi: {
+    label: 'Kochi', emoji: '🛶',
+    attractions: [
+      { name:'Fort Kochi Heritage Walk', tags:['history'], duration:90, rating:4.6, slot:'morning', desc:'Colonial-era streets, Chinese fishing nets, and old churches.' },
+      { name:'Kerala Backwater Houseboat', tags:['nature','relaxation'], duration:180, rating:4.8, slot:'morning', desc:'Cruise the palm-fringed backwaters on a traditional houseboat.' },
+      { name:'Kochi Seafood Trail', tags:['food'], duration:75, rating:4.7, slot:'afternoon', desc:'Fresh Kerala seafood from beachside shacks and local eateries.' },
+      { name:'Kathakali Performance', tags:['art','family'], duration:90, rating:4.6, slot:'evening', desc:'Traditional dance-drama with elaborate makeup and costumes.' },
+      { name:'Mattancherry Palace & Jew Town', tags:['history','shopping'], duration:90, rating:4.4, slot:'afternoon', desc:'Historic palace murals and antique-filled market lanes.' },
+      { name:'Marine Drive Sunset Walk', tags:['relaxation','nature'], duration:60, rating:4.5, slot:'evening', desc:'Waterfront promenade popular at golden hour.' },
+      { name:'Athirappilly Waterfalls Day Trip', tags:['nature','adventure'], duration:240, rating:4.7, slot:'morning', desc:'Kerala\'s largest waterfall, about an hour outside the city.' },
+      { name:'Lulu Mall Shopping', tags:['shopping','family'], duration:90, rating:4.2, slot:'afternoon', desc:'Large modern mall with retail, food court, and entertainment.' }
+    ]
+  }
+};
+
+let selectedCity = null;
+let selectedInterests = new Set();
+
+/* ---------- Render city cards ---------- */
+const cityGrid = document.getElementById('cityGrid');
+Object.entries(CITY_DATA).forEach(([key, data]) => {
+  const card = document.createElement('div');
+  card.className = 'city-card';
+  card.dataset.city = key;
+  card.innerHTML = `<span class="emoji">${data.emoji}</span><span class="name">${data.label}</span>`;
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.city-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedCity = key;
+    checkReady();
+  });
+  cityGrid.appendChild(card);
+});
+
+/* ---------- Render interest chips ---------- */
+const interestGrid = document.getElementById('interestGrid');
+INTERESTS.forEach(interest => {
+  const chip = document.createElement('div');
+  chip.className = 'chip';
+  chip.dataset.key = interest.key;
+  chip.innerHTML = `<span>${interest.icon}</span><span>${interest.label}</span>`;
+  chip.addEventListener('click', () => {
+    if (selectedInterests.has(interest.key)){
+      selectedInterests.delete(interest.key);
+      chip.classList.remove('selected');
+    } else {
+      selectedInterests.add(interest.key);
+      chip.classList.add('selected');
+    }
+    checkReady();
+  });
+  interestGrid.appendChild(chip);
+});
+
+/* ---------- Time slider ---------- */
+const timeSlider = document.getElementById('timeSlider');
+const timeValue = document.getElementById('timeValue');
+function updateTimeLabel(){
+  const v = parseFloat(timeSlider.value);
+  timeValue.textContent = (v % 1 === 0 ? v : v.toFixed(1)) + ' hrs';
+}
+timeSlider.addEventListener('input', updateTimeLabel);
+updateTimeLabel();
+
+function checkReady(){
+  document.getElementById('generateBtn').disabled = !(selectedCity && selectedInterests.size > 0);
+}
+
+/* ============================================================
+   CONTENT-BASED SCORING
+   score = 2 points per matching tag + 0.6 * rating
+   (unmatched attractions get a small baseline so a nearly-empty
+   time slot can still be filled with something decent)
+   ============================================================ */
+function scoreAttraction(attraction, userTags){
+  const matches = attraction.tags.filter(t => userTags.has(t));
+  const matchScore = matches.length * 2;
+  const qualityScore = attraction.rating * 0.6;
+  const baseline = matches.length === 0 ? attraction.rating * 0.25 : 0;
+  return { score: matchScore + qualityScore + baseline, matches };
+}
+
+/* ============================================================
+   0/1 KNAPSACK (dynamic programming)
+   capacity = available minutes
+   weight   = attraction duration
+   value    = content-based score
+   Returns the subset of attractions maximizing total value
+   without exceeding the time budget.
+   ============================================================ */
+function knapsackSelect(items, capacityMinutes){
+  const n = items.length;
+  const cap = Math.floor(capacityMinutes);
+  // dp[i][w] = best value using first i items with capacity w
+  const dp = Array.from({length: n + 1}, () => new Array(cap + 1).fill(0));
+
+  for (let i = 1; i <= n; i++){
+    const { duration, score } = items[i - 1];
+    for (let w = 0; w <= cap; w++){
+      if (duration > w){
+        dp[i][w] = dp[i - 1][w];
+      } else {
+        dp[i][w] = Math.max(dp[i - 1][w], dp[i - 1][w - duration] + score);
+      }
+    }
+  }
+
+  // Backtrack to find which items were chosen
+  const chosen = [];
+  let w = cap;
+  for (let i = n; i > 0; i--){
+    if (dp[i][w] !== dp[i - 1][w]){
+      chosen.push(items[i - 1]);
+      w -= items[i - 1].duration;
+    }
+  }
+  return chosen.reverse();
+}
+
+/* ---------- Order chosen stops into a same-day schedule ---------- */
+const SLOT_ORDER = { morning: 0, afternoon: 1, evening: 2 };
+
+function buildSchedule(chosen){
+  const ordered = [...chosen].sort((a, b) => {
+    const slotDiff = (SLOT_ORDER[a.slot] ?? 1) - (SLOT_ORDER[b.slot] ?? 1);
+    if (slotDiff !== 0) return slotDiff;
+    return b.score - a.score;
+  });
+
+  let cursor = 9 * 60; // start at 9:00 AM, in minutes
+  const schedule = [];
+  ordered.forEach((item, idx) => {
+    const start = cursor;
+    const end = start + item.duration;
+    schedule.push({ ...item, start, end });
+    cursor = end + 20; // 20-min buffer for travel between stops
+  });
+  return schedule;
+}
+
+function formatTime(mins){
+  let h = Math.floor(mins / 60);
+  const m = mins % 60;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${m.toString().padStart(2, '0')} ${ampm}`;
+}
+
+/* ---------- Generate itinerary ---------- */
+document.getElementById('generateBtn').addEventListener('click', () => {
+  const city = CITY_DATA[selectedCity];
+  const availableMinutes = parseFloat(timeSlider.value) * 60;
+
+  // 1. Content-based scoring for every attraction in the city
+  const scored = city.attractions.map(a => {
+    const { score, matches } = scoreAttraction(a, selectedInterests);
+    return { ...a, score, matches };
+  });
+
+  // 2. Knapsack optimization to fit the best combination into the time budget
+  const chosen = knapsackSelect(scored, availableMinutes);
+
+  // 3. Build a chronological schedule
+  const schedule = buildSchedule(chosen);
+
+  renderResults(city, schedule, availableMinutes);
+});
+
+function renderResults(city, schedule, availableMinutes){
+  const results = document.getElementById('results');
+  const timeline = document.getElementById('timeline');
+  const summaryBox = document.getElementById('summaryBox');
+
+  document.getElementById('resultsTitle').textContent = `${city.emoji} ${city.label} itinerary`;
+  document.getElementById('resultsSub').textContent = `${schedule.length} stop${schedule.length !== 1 ? 's' : ''} planned`;
+
+  timeline.innerHTML = '';
+
+  if (schedule.length === 0){
+    timeline.innerHTML = '<div class="empty-note">Not enough time for a full stop — try increasing your available hours.</div>';
+  }
+
+  schedule.forEach(stop => {
+    const el = document.createElement('div');
+    el.className = 'stop';
+    const tagsHtml = stop.tags.map(t => {
+      const isMatch = stop.matches.includes(t);
+      const interest = INTERESTS.find(i => i.key === t);
+      return `<span class="tag-pill ${isMatch ? 'match' : ''}">${interest ? interest.icon : ''} ${interest ? interest.label : t}</span>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div class="stop-top">
+        <div class="stop-name">📍 ${stop.name}</div>
+        <div class="stop-time">${formatTime(stop.start)} – ${formatTime(stop.end)}</div>
+      </div>
+      <div class="stop-desc">${stop.desc}</div>
+      <div class="stop-meta">
+        ${tagsHtml}
+        <span class="match-score">★ ${stop.rating}</span>
+      </div>
+    `;
+    timeline.appendChild(el);
+  });
+
+  const totalDuration = schedule.reduce((sum, s) => sum + s.duration, 0);
+  const totalScore = schedule.reduce((sum, s) => sum + s.score, 0);
+  const usedHours = (totalDuration / 60).toFixed(1);
+  const availHours = (availableMinutes / 60).toFixed(1);
+
+  summaryBox.innerHTML = `
+    <div class="item"><span class="val">${schedule.length}</span><span class="lbl">Stops</span></div>
+    <div class="item"><span class="val">${usedHours}h / ${availHours}h</span><span class="lbl">Time used</span></div>
+    <div class="item"><span class="val">${totalScore.toFixed(1)}</span><span class="lbl">Match score</span></div>
+  `;
+
+  results.classList.add('show');
+  results.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+
+</body>
+</html>

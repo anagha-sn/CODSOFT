@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pattern Pal — Rule-Based Chatbot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#FF6FA5;
+    --pink-soft:#FFD6E8;
+    --pink-pale:#FFF0F6;
+    --yellow:#FFD23F;
+    --yellow-soft:#FFF3D0;
+    --white:#FFFFFF;
+    --ink:#3A2E39;
+    --ink-soft:#8A7A87;
+    --shadow: 0 10px 30px rgba(255,111,165,0.18);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 12% 8%, var(--yellow-soft) 0%, transparent 40%),
+      radial-gradient(circle at 88% 92%, var(--pink-soft) 0%, transparent 45%),
+      var(--white);
+    font-family:'Quicksand', sans-serif;
+    color:var(--ink);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+
+  .app{
+    width:100%;
+    max-width:480px;
+    background:var(--white);
+    border-radius:28px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+    border:3px solid var(--pink-soft);
+    display:flex;
+    flex-direction:column;
+    height:min(720px, 90vh);
+  }
+
+  /* Header */
+  .header{
+    background:linear-gradient(135deg, var(--pink) 0%, #FF8FBB 60%, var(--yellow) 130%);
+    padding:20px 22px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    position:relative;
+    overflow:hidden;
+  }
+  .header::after{
+    content:"";
+    position:absolute;
+    right:-30px; top:-30px;
+    width:120px; height:120px;
+    background:rgba(255,255,255,0.18);
+    border-radius:50%;
+  }
+  .avatar{
+    width:46px; height:46px;
+    border-radius:50%;
+    background:var(--white);
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px;
+    flex-shrink:0;
+    box-shadow:0 4px 10px rgba(0,0,0,0.12);
+  }
+  .header-text{ z-index:1; }
+  .header-text h1{
+    font-family:'Fredoka', sans-serif;
+    font-size:19px;
+    margin:0;
+    color:var(--white);
+    letter-spacing:0.2px;
+  }
+  .header-text p{
+    margin:2px 0 0;
+    font-size:12.5px;
+    color:rgba(255,255,255,0.92);
+  }
+  .status-dot{
+    width:8px; height:8px; border-radius:50%;
+    background:#4ADE80;
+    display:inline-block;
+    margin-right:5px;
+    box-shadow:0 0 0 3px rgba(74,222,128,0.25);
+  }
+
+  /* Chat area */
+  .chat{
+    flex:1;
+    overflow-y:auto;
+    padding:20px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    background:
+      repeating-linear-gradient(135deg, transparent, transparent 38px, var(--pink-pale) 38px, var(--pink-pale) 39px);
+  }
+  .chat::-webkit-scrollbar{ width:6px; }
+  .chat::-webkit-scrollbar-thumb{ background:var(--pink-soft); border-radius:10px; }
+
+  .msg{
+    max-width:78%;
+    padding:11px 15px;
+    border-radius:18px;
+    font-size:14.5px;
+    line-height:1.45;
+    animation:pop 0.22s ease;
+    word-wrap:break-word;
+  }
+  @keyframes pop{
+    from{ opacity:0; transform:translateY(6px) scale(0.98); }
+    to{ opacity:1; transform:translateY(0) scale(1); }
+  }
+
+  .msg.bot{
+    align-self:flex-start;
+    background:var(--yellow-soft);
+    border:2px solid var(--yellow);
+    border-bottom-left-radius:5px;
+    color:var(--ink);
+  }
+  .msg.user{
+    align-self:flex-end;
+    background:linear-gradient(135deg, var(--pink) 0%, #FF8FBB 100%);
+    color:var(--white);
+    border-bottom-right-radius:5px;
+    font-weight:600;
+  }
+  .msg-row{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+  }
+  .msg-row.bot-row{ align-items:flex-start; }
+  .msg-row.user-row{ align-items:flex-end; }
+  .msg-time{
+    font-size:10px;
+    color:var(--ink-soft);
+    padding:0 4px;
+  }
+
+  .typing{
+    align-self:flex-start;
+    background:var(--yellow-soft);
+    border:2px solid var(--yellow);
+    border-bottom-left-radius:5px;
+    padding:12px 16px;
+    border-radius:18px;
+    display:flex;
+    gap:4px;
+  }
+  .typing span{
+    width:6px; height:6px;
+    background:var(--pink);
+    border-radius:50%;
+    display:inline-block;
+    animation:bounce 1.1s infinite ease-in-out;
+  }
+  .typing span:nth-child(2){ animation-delay:0.15s; }
+  .typing span:nth-child(3){ animation-delay:0.3s; }
+  @keyframes bounce{
+    0%,60%,100%{ transform:translateY(0); opacity:0.5; }
+    30%{ transform:translateY(-5px); opacity:1; }
+  }
+
+  /* Quick chips */
+  .chips{
+    display:flex;
+    gap:8px;
+    padding:10px 16px;
+    flex-wrap:wrap;
+    background:var(--white);
+    border-top:1px solid var(--pink-pale);
+  }
+  .chip{
+    border:2px solid var(--pink-soft);
+    background:var(--pink-pale);
+    color:var(--pink);
+    font-family:'Quicksand', sans-serif;
+    font-weight:700;
+    font-size:12px;
+    padding:6px 12px;
+    border-radius:20px;
+    cursor:pointer;
+    transition:all 0.15s ease;
+  }
+  .chip:hover{
+    background:var(--pink);
+    color:var(--white);
+    transform:translateY(-1px);
+  }
+
+  /* Input area */
+  .input-bar{
+    display:flex;
+    gap:10px;
+    padding:14px 16px 16px;
+    background:var(--white);
+    border-top:1px solid var(--pink-pale);
+  }
+  .input-bar input{
+    flex:1;
+    border:2px solid var(--pink-soft);
+    border-radius:22px;
+    padding:11px 18px;
+    font-family:'Quicksand', sans-serif;
+    font-size:14.5px;
+    outline:none;
+    color:var(--ink);
+    background:var(--pink-pale);
+    transition:border-color 0.15s ease, background 0.15s ease;
+  }
+  .input-bar input::placeholder{ color:var(--ink-soft); }
+  .input-bar input:focus{
+    border-color:var(--pink);
+    background:var(--white);
+  }
+  .send-btn{
+    width:44px; height:44px;
+    border-radius:50%;
+    border:none;
+    background:linear-gradient(135deg, var(--pink), var(--yellow));
+    color:var(--white);
+    font-size:18px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    transition:transform 0.15s ease;
+  }
+  .send-btn:hover{ transform:scale(1.07); }
+  .send-btn:active{ transform:scale(0.94); }
+  .send-btn:focus-visible, .chip:focus-visible, .input-bar input:focus-visible{
+    outline:3px solid var(--pink);
+    outline-offset:2px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .msg, .typing span{ animation:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="avatar">🤖</div>
+    <div class="header-text">
+      <h1>Pattern Pal</h1>
+      <p><span class="status-dot"></span>Rule-based chatbot · online</p>
+    </div>
+  </div>
+
+  <div class="chat" id="chat"></div>
+
+  <div class="chips" id="chips">
+    <div class="chip" data-msg="Hello!">Hello!</div>
+    <div class="chip" data-msg="What can you do?">What can you do?</div>
+    <div class="chip" data-msg="Tell me a joke">Tell me a joke</div>
+    <div class="chip" data-msg="What's your name?">Your name?</div>
+    <div class="chip" data-msg="Bye">Bye</div>
+  </div>
+
+  <div class="input-bar">
+    <input type="text" id="userInput" placeholder="Type a message..." autocomplete="off" />
+    <button class="send-btn" id="sendBtn" aria-label="Send message">➤</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   RULE-BASED CHATBOT ENGINE
+   Pattern matching via keyword arrays + regex, checked in order
+   of specificity. Each rule = { patterns, responses, priority }
+   ============================================================ */
+
+const rules = [
+  {
+    name: "greeting",
+    patterns: [/^(hi|hello|hey|yo|hola|sup|howdy)\b/i, /good (morning|afternoon|evening)/i],
+    responses: [
+      "Hey there! 👋 Great to see you.",
+      "Hello! What's on your mind today?",
+      "Hi! I'm Pattern Pal — ask me anything."
+    ]
+  },
+  {
+    name: "howAreYou",
+    patterns: [/how are you/i, /how're you/i, /how you doin/i],
+    responses: [
+      "I'm running smoothly, thanks for asking! How about you?",
+      "All my if-statements are firing correctly today 😄 How are you?"
+    ]
+  },
+  {
+    name: "botName",
+    patterns: [/your name/i, /who are you/i, /what are you/i],
+    responses: [
+      "I'm Pattern Pal, a simple rule-based chatbot!",
+      "You can call me Pattern Pal — built with plain pattern matching, no fancy AI here."
+    ]
+  },
+  {
+    name: "userName",
+    patterns: [/my name is (\w+)/i, /i'?m (\w+)$/i, /call me (\w+)/i],
+    responses: null, // handled dynamically below
+    dynamic: (match) => `Nice to meet you, ${match[1]}! 🎉`
+  },
+  {
+    name: "capabilities",
+    patterns: [/what can you do/i, /help/i, /what do you do/i],
+    responses: [
+      "I can chat about greetings, jokes, the weather, my name, and more — just try me! Try the quick buttons below for ideas.",
+      "I match your message against a set of predefined patterns and reply accordingly. Try asking for a joke!"
+    ]
+  },
+  {
+    name: "joke",
+    patterns: [/joke/i, /make me laugh/i, /funny/i],
+    responses: [
+      "Why do programmers prefer dark mode? Because light attracts bugs! 🐛",
+      "I told my computer I needed a break, and now it won't stop sending me KitKats. 🍫",
+      "Why did the chatbot break up with the calculator? It found someone who added up better. ➕💔"
+    ]
+  },
+  {
+    name: "weather",
+    patterns: [/weather/i, /raining/i, /sunny/i, /temperature/i],
+    responses: [
+      "I don't have live weather data, but I hope it's sunny wherever you are! ☀️",
+      "I'm just a rule-based bot, so no real weather info — but grab an umbrella just in case! 🌂"
+    ]
+  },
+  {
+    name: "thanks",
+    patterns: [/thank/i, /thx/i, /appreciate it/i],
+    responses: [
+      "You're very welcome! 💛",
+      "Anytime! Happy to help.",
+      "No problem at all!"
+    ]
+  },
+  {
+    name: "feelingGood",
+    patterns: [/i'?m (good|great|fine|happy|awesome|okay|ok)/i],
+    responses: [
+      "That's wonderful to hear! 🌸",
+      "Love that energy!"
+    ]
+  },
+  {
+    name: "feelingBad",
+    patterns: [/i'?m (sad|tired|bad|not okay|not ok|down|upset)/i],
+    responses: [
+      "I'm sorry to hear that. I hope things get better soon. 💛",
+      "That sounds tough. Take it easy on yourself today."
+    ]
+  },
+  {
+    name: "farewell",
+    patterns: [/^(bye|goodbye|see ya|see you|later|cya)\b/i],
+    responses: [
+      "Goodbye! Have a wonderful day! 🌼",
+      "See you later! Come back anytime.",
+      "Bye for now! 👋"
+    ]
+  },
+  {
+    name: "yesNo",
+    patterns: [/^(yes|yeah|yep|sure)$/i],
+    responses: ["Great!", "Awesome, glad to hear it."]
+  },
+  {
+    name: "noResponse",
+    patterns: [/^(no|nope|nah)$/i],
+    responses: ["No worries!", "Okay, that's alright."]
+  }
+];
+
+const fallbacks = [
+  "Hmm, I didn't quite catch that. Could you rephrase?",
+  "I'm just a simple rule-based bot — try asking about my name, a joke, or how I'm doing!",
+  "I don't have a rule for that yet. Try one of the quick buttons below!",
+  "Not sure I understand — but I'm always happy to chat about jokes, greetings, or the weather."
+];
+
+function pickRandom(arr){
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/* Core pattern-matching function: loops through rules in order,
+   returns first matching response (or a fallback). */
+function getBotResponse(input){
+  const text = input.trim();
+
+  for (const rule of rules){
+    for (const pattern of rule.patterns){
+      const match = text.match(pattern);
+      if (match){
+        if (rule.dynamic){
+          return rule.dynamic(match);
+        }
+        return pickRandom(rule.responses);
+      }
+    }
+  }
+  return pickRandom(fallbacks);
+}
+
+/* ============================== UI wiring ============================== */
+
+const chat = document.getElementById('chat');
+const input = document.getElementById('userInput');
+const sendBtn = document.getElementById('sendBtn');
+const chips = document.getElementById('chips');
+
+function timeNow(){
+  const d = new Date();
+  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+function addMessage(text, sender){
+  const row = document.createElement('div');
+  row.className = `msg-row ${sender}-row`;
+
+  const bubble = document.createElement('div');
+  bubble.className = `msg ${sender}`;
+  bubble.textContent = text;
+
+  const time = document.createElement('div');
+  time.className = 'msg-time';
+  time.textContent = timeNow();
+
+  row.appendChild(bubble);
+  row.appendChild(time);
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showTyping(){
+  const t = document.createElement('div');
+  t.className = 'typing';
+  t.id = 'typingIndicator';
+  t.innerHTML = '<span></span><span></span><span></span>';
+  chat.appendChild(t);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function hideTyping(){
+  const t = document.getElementById('typingIndicator');
+  if (t) t.remove();
+}
+
+function handleSend(customText){
+  const text = customText !== undefined ? customText : input.value;
+  if (!text.trim()) return;
+
+  addMessage(text, 'user');
+  input.value = '';
+
+  showTyping();
+  const delay = 500 + Math.random() * 500;
+  setTimeout(() => {
+    hideTyping();
+    const reply = getBotResponse(text);
+    addMessage(reply, 'bot');
+  }, delay);
+}
+
+sendBtn.addEventListener('click', () => handleSend());
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') handleSend();
+});
+chips.addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip');
+  if (chip) handleSend(chip.dataset.msg);
+});
+
+// Initial greeting
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    addMessage("Hi! I'm Pattern Pal 🌸 a simple rule-based chatbot. Type something or tap a quick reply below to get started!", 'bot');
+  }, 300);
+});
+</script>
+
+</body>
+</html>

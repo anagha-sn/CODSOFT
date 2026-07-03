@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minimax Tic-Tac-Toe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#FF6FA5;
+    --pink-soft:#FFD6E8;
+    --pink-pale:#FFF0F6;
+    --yellow:#FFD23F;
+    --yellow-soft:#FFF3D0;
+    --white:#FFFFFF;
+    --ink:#3A2E39;
+    --ink-soft:#8A7A87;
+    --win:#4ADE80;
+    --shadow: 0 10px 30px rgba(255,111,165,0.18);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 12% 8%, var(--yellow-soft) 0%, transparent 40%),
+      radial-gradient(circle at 88% 92%, var(--pink-soft) 0%, transparent 45%),
+      var(--white);
+    font-family:'Quicksand', sans-serif;
+    color:var(--ink);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+
+  .app{
+    width:100%;
+    max-width:420px;
+    background:var(--white);
+    border-radius:28px;
+    box-shadow:var(--shadow);
+    border:3px solid var(--pink-soft);
+    padding:24px 22px 26px;
+  }
+
+  .header{ text-align:center; margin-bottom:16px; }
+  .header h1{
+    font-family:'Fredoka', sans-serif;
+    font-size:22px;
+    margin:0 0 4px;
+    background:linear-gradient(135deg, var(--pink), var(--yellow));
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+  .header p{
+    margin:0;
+    font-size:12.5px;
+    color:var(--ink-soft);
+  }
+
+  /* Difficulty selector */
+  .difficulty{
+    display:flex;
+    gap:8px;
+    margin:16px 0;
+    background:var(--pink-pale);
+    padding:5px;
+    border-radius:16px;
+  }
+  .diff-btn{
+    flex:1;
+    border:none;
+    background:transparent;
+    padding:9px 0;
+    border-radius:12px;
+    font-family:'Quicksand', sans-serif;
+    font-weight:700;
+    font-size:13px;
+    color:var(--ink-soft);
+    cursor:pointer;
+    transition:all 0.18s ease;
+  }
+  .diff-btn.active{
+    background:linear-gradient(135deg, var(--pink), #FF8FBB);
+    color:var(--white);
+    box-shadow:0 4px 10px rgba(255,111,165,0.35);
+  }
+  .diff-btn:not(.active):hover{ color:var(--pink); }
+
+  /* Status bar */
+  .status{
+    text-align:center;
+    font-family:'Fredoka', sans-serif;
+    font-size:15px;
+    padding:10px 12px;
+    border-radius:14px;
+    background:var(--yellow-soft);
+    border:2px solid var(--yellow);
+    margin-bottom:16px;
+    min-height:20px;
+    transition:all 0.2s ease;
+  }
+  .status.win{ background:#E8FCEF; border-color:var(--win); color:#1F9D55; }
+  .status.lose{ background:#FFE8ED; border-color:var(--pink); color:#C4356A; }
+  .status.draw{ background:#F1EEFF; border-color:#B79CFF; color:#6B4FCF; }
+
+  /* Board */
+  .board{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:8px;
+    margin-bottom:18px;
+  }
+  .cell{
+    aspect-ratio:1;
+    background:var(--pink-pale);
+    border:2px solid var(--pink-soft);
+    border-radius:16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Fredoka', sans-serif;
+    font-size:clamp(28px, 8vw, 42px);
+    cursor:pointer;
+    transition:background 0.15s ease, transform 0.1s ease;
+    user-select:none;
+  }
+  .cell:hover:not(.filled){
+    background:var(--yellow-soft);
+    transform:scale(1.03);
+  }
+  .cell.filled{ cursor:default; }
+  .cell.x{ color:var(--pink); }
+  .cell.o{ color:#F5A623; }
+  .cell.win-cell{
+    background:#E8FCEF;
+    border-color:var(--win);
+    animation:pulse 0.5s ease;
+  }
+  @keyframes pulse{
+    0%{ transform:scale(1); }
+    50%{ transform:scale(1.08); }
+    100%{ transform:scale(1); }
+  }
+  .cell.pop{ animation:pop 0.18s ease; }
+  @keyframes pop{
+    from{ transform:scale(0.5); opacity:0.3; }
+    to{ transform:scale(1); opacity:1; }
+  }
+
+  /* Score */
+  .scoreboard{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:16px;
+  }
+  .score-box{
+    flex:1;
+    text-align:center;
+    background:var(--pink-pale);
+    border-radius:14px;
+    padding:8px 4px;
+  }
+  .score-box .label{
+    font-size:11px;
+    color:var(--ink-soft);
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+  }
+  .score-box .value{
+    font-family:'Fredoka', sans-serif;
+    font-size:20px;
+    margin-top:2px;
+  }
+  .score-box.you .value{ color:var(--pink); }
+  .score-box.ai .value{ color:#F5A623; }
+  .score-box.draws .value{ color:var(--ink-soft); }
+
+  .controls{
+    display:flex;
+    gap:10px;
+  }
+  .btn{
+    flex:1;
+    border:none;
+    border-radius:16px;
+    padding:12px 0;
+    font-family:'Quicksand', sans-serif;
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+    transition:transform 0.15s ease;
+  }
+  .btn:hover{ transform:translateY(-1px); }
+  .btn:active{ transform:translateY(0); }
+  .btn.primary{
+    background:linear-gradient(135deg, var(--pink), var(--yellow));
+    color:var(--white);
+  }
+  .btn.secondary{
+    background:var(--pink-pale);
+    color:var(--ink);
+    border:2px solid var(--pink-soft);
+  }
+  .btn:focus-visible, .diff-btn:focus-visible, .cell:focus-visible{
+    outline:3px solid var(--pink);
+    outline-offset:2px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .cell, .status{ animation:none !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <h1>Minimax Tic-Tac-Toe</h1>
+    <p>You're X · AI is O</p>
+  </div>
+
+  <div class="difficulty" role="group" aria-label="Difficulty level">
+    <button class="diff-btn" data-level="easy">Easy</button>
+    <button class="diff-btn active" data-level="medium">Medium</button>
+    <button class="diff-btn" data-level="hard">Hard</button>
+  </div>
+
+  <div class="status" id="status">Your turn — pick a square!</div>
+
+  <div class="board" id="board"></div>
+
+  <div class="scoreboard">
+    <div class="score-box you">
+      <div class="label">You</div>
+      <div class="value" id="scoreYou">0</div>
+    </div>
+    <div class="score-box draws">
+      <div class="label">Draws</div>
+      <div class="value" id="scoreDraw">0</div>
+    </div>
+    <div class="score-box ai">
+      <div class="label">AI</div>
+      <div class="value" id="scoreAI">0</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn secondary" id="resetScoreBtn">Reset Score</button>
+    <button class="btn primary" id="newGameBtn">New Game</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   TIC-TAC-TOE AI — Minimax with Alpha-Beta Pruning
+   Human = 'X', AI = 'O'
+   Difficulty controls how "optimally" the AI plays:
+     - easy:   mostly random moves (occasionally smart)
+     - medium: minimax but depth-limited / partially random
+     - hard:   full minimax + alpha-beta => unbeatable
+   ============================================================ */
+
+const HUMAN = 'X';
+const AI = 'O';
+const EMPTY = null;
+
+const WIN_LINES = [
+  [0,1,2],[3,4,5],[6,7,8], // rows
+  [0,3,6],[1,4,7],[2,5,8], // cols
+  [0,4,8],[2,4,6]          // diagonals
+];
+
+let board = Array(9).fill(EMPTY);
+let gameOver = false;
+let difficulty = 'medium';
+let scores = { you: 0, ai: 0, draw: 0 };
+
+const boardEl = document.getElementById('board');
+const statusEl = document.getElementById('status');
+
+/* ---------- Build board cells ---------- */
+function renderBoard(){
+  boardEl.innerHTML = '';
+  board.forEach((val, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'cell' + (val ? ' filled ' + val.toLowerCase() : '');
+    cell.textContent = val || '';
+    cell.dataset.index = i;
+    cell.tabIndex = 0;
+    cell.addEventListener('click', () => onCellClick(i));
+    cell.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') onCellClick(i);
+    });
+    boardEl.appendChild(cell);
+  });
+}
+renderBoard();
+
+/* ---------- Win/draw checking ---------- */
+function getWinner(b){
+  for (const [a,c,d] of WIN_LINES){
+    if (b[a] && b[a] === b[c] && b[a] === b[d]){
+      return { winner: b[a], line: [a,c,d] };
+    }
+  }
+  if (b.every(cell => cell !== EMPTY)) return { winner: 'draw', line: null };
+  return null;
+}
+
+/* ---------- MINIMAX with Alpha-Beta Pruning ----------
+   Returns a score from AI's perspective:
+     +10 - depth  => AI wins (prefer faster wins)
+     -10 + depth  => Human wins (prefer slower losses)
+      0           => draw
+--------------------------------------------------------- */
+function minimax(b, depth, isMaximizing, alpha, beta){
+  const result = getWinner(b);
+  if (result){
+    if (result.winner === AI) return 10 - depth;
+    if (result.winner === HUMAN) return depth - 10;
+    return 0; // draw
+  }
+
+  if (isMaximizing){
+    let best = -Infinity;
+    for (let i = 0; i < 9; i++){
+      if (b[i] === EMPTY){
+        b[i] = AI;
+        best = Math.max(best, minimax(b, depth + 1, false, alpha, beta));
+        b[i] = EMPTY;
+        alpha = Math.max(alpha, best);
+        if (beta <= alpha) break; // prune
+      }
+    }
+    return best;
+  } else {
+    let best = Infinity;
+    for (let i = 0; i < 9; i++){
+      if (b[i] === EMPTY){
+        b[i] = HUMAN;
+        best = Math.min(best, minimax(b, depth + 1, true, alpha, beta));
+        b[i] = EMPTY;
+        beta = Math.min(beta, best);
+        if (beta <= alpha) break; // prune
+      }
+    }
+    return best;
+  }
+}
+
+/* Finds the optimal move for AI using minimax + alpha-beta */
+function getBestMove(b){
+  let bestScore = -Infinity;
+  let bestMove = null;
+  for (let i = 0; i < 9; i++){
+    if (b[i] === EMPTY){
+      b[i] = AI;
+      const score = minimax(b, 0, false, -Infinity, Infinity);
+      b[i] = EMPTY;
+      if (score > bestScore){
+        bestScore = score;
+        bestMove = i;
+      }
+    }
+  }
+  return bestMove;
+}
+
+function getRandomMove(b){
+  const empty = b.map((v,i) => v === EMPTY ? i : null).filter(v => v !== null);
+  return empty[Math.floor(Math.random() * empty.length)];
+}
+
+/* ---------- Difficulty-based move selection ----------
+   easy:   80% random, 20% optimal
+   medium: 45% random, 55% optimal
+   hard:   100% optimal (unbeatable)
+-------------------------------------------------------- */
+function getAIMove(b){
+  const roll = Math.random();
+  if (difficulty === 'easy'){
+    return roll < 0.8 ? getRandomMove(b) : getBestMove(b);
+  }
+  if (difficulty === 'medium'){
+    return roll < 0.45 ? getRandomMove(b) : getBestMove(b);
+  }
+  return getBestMove(b); // hard
+}
+
+/* ---------- Game flow ---------- */
+function onCellClick(i){
+  if (gameOver || board[i] !== EMPTY) return;
+
+  makeMove(i, HUMAN);
+  const result = getWinner(board);
+  if (result){ endGame(result); return; }
+
+  statusEl.textContent = "AI is thinking...";
+  boardEl.style.pointerEvents = 'none';
+
+  setTimeout(() => {
+    const aiMove = getAIMove(board);
+    if (aiMove !== undefined && aiMove !== null){
+      makeMove(aiMove, AI);
+    }
+    const result2 = getWinner(board);
+    boardEl.style.pointerEvents = 'auto';
+    if (result2){ endGame(result2); return; }
+    statusEl.textContent = "Your turn — pick a square!";
+  }, 400 + Math.random() * 300);
+}
+
+function makeMove(i, player){
+  board[i] = player;
+  renderBoard();
+  const cell = boardEl.children[i];
+  cell.classList.add('pop');
+}
+
+function endGame(result){
+  gameOver = true;
+  statusEl.classList.remove('win','lose','draw');
+
+  if (result.winner === 'draw'){
+    statusEl.textContent = "It's a draw! 🤝";
+    statusEl.classList.add('draw');
+    scores.draw++;
+  } else if (result.winner === HUMAN){
+    statusEl.textContent = "You win! 🎉";
+    statusEl.classList.add('win');
+    scores.you++;
+    highlightLine(result.line, true);
+  } else {
+    statusEl.textContent = "AI wins! 🤖";
+    statusEl.classList.add('lose');
+    scores.ai++;
+    highlightLine(result.line, false);
+  }
+  updateScoreboard();
+}
+
+function highlightLine(line, isHumanWin){
+  if (!line) return;
+  line.forEach(i => {
+    boardEl.children[i].classList.add('win-cell');
+  });
+}
+
+function updateScoreboard(){
+  document.getElementById('scoreYou').textContent = scores.you;
+  document.getElementById('scoreAI').textContent = scores.ai;
+  document.getElementById('scoreDraw').textContent = scores.draw;
+}
+
+function newGame(){
+  board = Array(9).fill(EMPTY);
+  gameOver = false;
+  statusEl.className = 'status';
+  statusEl.textContent = "Your turn — pick a square!";
+  renderBoard();
+}
+
+/* ---------- Controls ---------- */
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    difficulty = btn.dataset.level;
+    newGame();
+  });
+});
+
+document.getElementById('newGameBtn').addEventListener('click', newGame);
+document.getElementById('resetScoreBtn').addEventListener('click', () => {
+  scores = { you: 0, ai: 0, draw: 0 };
+  updateScoreboard();
+  newGame();
+});
+</script>
+
+</body>
+</html>
